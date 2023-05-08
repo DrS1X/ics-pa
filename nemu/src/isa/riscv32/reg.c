@@ -9,8 +9,17 @@ const char *regs[] = {
 };
 
 void isa_reg_display() {
+	for(int i = 0; i < 32; ++i)
+		printf("%s: %u; ", reg_name(i), (uint32_t)cpu.gpr[i]._32);
+	printf("\n");
 }
 
 word_t isa_reg_str2val(const char *s, bool *success) {
-  return 0;
+	*success = true;
+	for(int i = 0; i < 32; ++i){
+		if(strcmp(s,reg_name(i)) == 0)
+				return cpu.gpr[i]._32;
+	}
+	*success = false;
+	return 0;
 }

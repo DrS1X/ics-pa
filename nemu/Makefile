@@ -1,6 +1,6 @@
 NAME = nemu
 
-ISA ?= x86
+ISA ?= riscv32
 ISAS = $(shell ls src/isa/)
 ifeq ($(filter $(ISAS), $(ISA)), ) # ISA must be valid
 $(error Invalid ISA. Supported: $(ISAS))
@@ -105,6 +105,10 @@ run-env: $(BINARY) $(DIFF_REF_SO)
 run: run-env
 	$(call git_commit, "run")
 	$(NEMU_EXEC)
+
+test_expr: run-env
+	$(call git_commit, "run")
+	$(NEMU_EXEC) < tools/gen-expr/input | grep -E '(^\(nemu\))|(^-?[1-9][0-9]?$$)'
 
 gdb: run-env
 	$(call git_commit, "gdb")

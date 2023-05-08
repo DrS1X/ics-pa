@@ -16,8 +16,38 @@ static char *code_format =
 "  return 0; "
 "}";
 
-static inline void gen_rand_expr() {
-  buf[0] = '\0';
+const char binary_opt[][3] = {
+	"+", "-", "*", "/",
+	"==", "!=",
+	"&&"
+};
+const int nr_binary_opt = sizeof(binary_opt) / sizeof(binary_opt[0]);
+
+static void gen_rand_expr(int *depth) {
+	uint32_t num;
+	int choose = rand() % 3;
+	if(++(*depth) > 10)
+			choose = 0;
+	else if( *depth < 3)
+			choose = 2;
+
+	switch(choose){
+	  case 0:
+				num = rand();
+				sprintf(buf + strlen(buf), "%u", num);
+				break;
+		case 1:
+			buf[strlen(buf) + 1] = '\0';
+			buf[strlen(buf)] = '(';
+			gen_rand_expr(depth);
+			buf[strlen(buf) + 1] = '\0';
+			buf[strlen(buf)] = ')';
+			break;
+	  default:
+			gen_rand_expr(depth);
+			strcat(buf + strlen(buf), binary_opt[rand() % nr_binary_opt]);	// rand operation
+			gen_rand_expr(depth);
+  }
 }
 
 int main(int argc, char *argv[]) {
@@ -29,26 +59,36 @@ int main(int argc, char *argv[]) {
   }
   int i;
   for (i = 0; i < loop; i ++) {
-    gen_rand_expr();
+		code_buf[0] = '\0';
+		buf[0] = '\0';
+
+		int depth = 0;
+    gen_rand_expr(&depth);
 
     sprintf(code_buf, code_format, buf);
-
-    FILE *fp = fopen("/tmp/.code.c", "w");
+	
+		FILE *fp = fopen("/tmp/.code.c", "w");
     assert(fp != NULL);
     fputs(code_buf, fp);
     fclose(fp);
 
-    int ret = system("gcc /tmp/.code.c -o /tmp/.expr");
-    if (ret != 0) continue;
+		fp = popen("gcc /tmp/.code.c -o /tmp/.expr 2>&1", "r");
+		assert(fp != NULL);
+		char msg[1024] = {0};
+		size_t n_rec = fread(msg, 1, sizeof(msg), fp);
+		pclose(fp);
+		if(n_rec != 0){
+				//printf("Throw the expression. Warning: %s\n", msg);
+				continue;
+		}
 
     fp = popen("/tmp/.expr", "r");
     assert(fp != NULL);
-
     int result;
-    fscanf(fp, "%d", &result);
+    assert(fscanf(fp, "%d", &result) == 1);
     pclose(fp);
-
-    printf("%u %s\n", result, buf);
-  }
+	
+    printf("p %u - (%s)\n", result, buf);
+  } 
   return 0;
 }

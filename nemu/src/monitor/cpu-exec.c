@@ -3,6 +3,7 @@
 #include <monitor/difftest.h>
 #include <stdlib.h>
 #include <sys/time.h>
+#include "debug/watchpoint.h"
 
 /* The assembly code of instructions executed is only output to the screen
  * when the number of instructions executed is less than this value.
@@ -88,7 +89,11 @@ void cpu_exec(uint64_t n) {
 #ifdef DEBUG
     asm_print(this_pc, seq_pc - this_pc, n < MAX_INSTR_TO_PRINT);
 
-    /* TODO: check watchpoints here. */
+    /* check watchpoints here. */
+		if(check_wp()){
+				printf("seq_pc: %u\n", seq_pc);
+				break;
+		}
 #endif
 
 #ifdef HAS_IOE
