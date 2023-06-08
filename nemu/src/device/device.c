@@ -23,9 +23,7 @@ static void set_device_update_flag() {
 }
 
 void device_update() {
-  if (!device_update_flag) {
-    return;
-  }
+  if (!device_update_flag)  return;
   device_update_flag = false;
   vga_update_screen();
 

@@ -29,8 +29,18 @@ int atoi(const char* nptr) {
   return x;
 }
 
-void *malloc(size_t size) {
-  return NULL;
+// size | status | ptr to next | ptr to prev | ... | size |
+void *malloc(size_t size) {	
+  static uint8_t* head = NULL;
+
+	// init
+	if (head == NULL) {
+		head = (uint8_t*)heap.start;
+	}
+
+	head += size;
+
+  return head;
 }
 
 void free(void *ptr) {

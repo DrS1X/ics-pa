@@ -1,15 +1,23 @@
 #include <am.h>
 #include <nemu.h>
 
-#define SYNC_ADDR (VGACTL_ADDR + 4)
+#define SYNC_ADDR (VGACTL_ADDR + 32)
 
 void __am_gpu_init() {
+	uint32_t w_h = inl(VGACTL_ADDR);
+  int i;
+  int w = w_h >> 16;
+	int h = w_h & 0xFFFF;
+	uint32_t *fb = (uint32_t *)(uintptr_t)FB_ADDR;
+  for (i = 0; i < w * h; i ++) fb[i] = i;
+	outl(SYNC_ADDR, 1);
 }
 
 void __am_gpu_config(AM_GPU_CONFIG_T *cfg) {
+	uint32_t w_h = inl(VGACTL_ADDR);
   *cfg = (AM_GPU_CONFIG_T) {
     .present = true, .has_accel = false,
-    .width = 0, .height = 0,
+    .width = w_h >> 16, .height = w_h & 0xFFFF,
     .vmemsz = 0
   };
 }

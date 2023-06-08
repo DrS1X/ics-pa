@@ -34,8 +34,8 @@ vaddr_t isa_exec_once() {
   s.is_jmp = 0;
   s.seq_pc = cpu.pc;
 
-  fetch_decode_exec(&s);
-  update_pc(&s);
+  fetch_decode_exec(&s);	// s.seq_pc += 4, and maybe is_jmp = true; jmp_pc = ?
+  update_pc(&s);	// cpu.pc = (s->is_jmp ? s->jmp_pc : s->seq_pc);
 
   reset_zero();
 

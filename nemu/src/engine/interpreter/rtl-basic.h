@@ -59,6 +59,7 @@ def_rtl_compute_reg(mul_lo)
 def_rtl_compute_reg(mul_hi)
 def_rtl_compute_reg(imul_lo)
 def_rtl_compute_reg(imul_hi)
+def_rtl_compute_reg(iumul_hi)
 def_rtl_compute_reg(div_q)
 def_rtl_compute_reg(div_r)
 def_rtl_compute_reg(idiv_q)
@@ -155,4 +156,5 @@ static inline def_rtl(jrelop, uint32_t relop,
   bool is_jmp = interpret_relop(relop, *src1, *src2);
   if (is_jmp) rtl_j(s, target);
 }
+
 #endif

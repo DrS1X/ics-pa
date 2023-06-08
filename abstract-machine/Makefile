@@ -13,6 +13,9 @@ ifeq ($(MAKECMDGOALS),)
   .DEFAULT_GOAL = image
 endif
 
+### Default ARCH
+ARCH ?= riscv32-nemu
+
 ### Override checks when `make clean/clean-all/html`
 ifeq ($(findstring $(MAKECMDGOALS),clean|clean-all|html),)
 
