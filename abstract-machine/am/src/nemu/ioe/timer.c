@@ -15,7 +15,7 @@ void __am_timer_rtc(AM_TIMER_RTC_T *rtc) {
 
 void __am_timer_uptime(AM_TIMER_UPTIME_T *uptime) {
 	uint32_t now_usec = inl(RTC_ADDR);
-	uint32_t now_sec = inl(RTC_ADDR + 4);
+	uint32_t now_sec = inl(RTC_ADDR + sizeof(uint32_t));
 
   long seconds = now_sec - boot_time_sec;
   long useconds = now_usec - boot_time_usec;
@@ -24,5 +24,5 @@ void __am_timer_uptime(AM_TIMER_UPTIME_T *uptime) {
 
 void __am_timer_init() {
 	boot_time_usec = inl(RTC_ADDR);
-	boot_time_sec = inl(RTC_ADDR + 4);
+	boot_time_sec = inl(RTC_ADDR + sizeof(uint32_t));
 }

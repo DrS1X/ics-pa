@@ -22,12 +22,12 @@
 #define VGACTL_PORT 0x100 // Note that this is not the standard
 #define VGACTL_MMIO 0xa1000100
 
-#define SYNC_MEM (VGACTL_MMIO + 32)
+#define SYNC_MEM (VGACTL_MMIO + sizeof(uint32_t))
 
 static SDL_Renderer *renderer = NULL;
 static SDL_Texture *texture = NULL;
 
-static uint32_t (*vmem) [SCREEN_W] = NULL;
+static uint32_t (*vmem) [SCREEN_SIZE] = NULL;
 static uint32_t *vgactl_port_base = NULL;
 
 static inline void update_screen() {
@@ -41,10 +41,10 @@ static inline void update_screen() {
 
 void vga_update_screen() {
   // call `update_screen()` when the sync register is non-zero,
-	if (*(vgactl_port_base + 1) != 0)
+	if (vgactl_port_base[1] != 0)
 		update_screen();
   // then zero out the sync register
-	*(vgactl_port_base + 1) = 0;
+	vgactl_port_base[1] = 0;
 }
 
 void init_vga() {
@@ -63,11 +63,13 @@ void init_vga() {
       SDL_TEXTUREACCESS_STATIC, SCREEN_W, SCREEN_H);
 #endif
 
-  vgactl_port_base = (void *)new_space(64);
+  vgactl_port_base = (void *)new_space(2 * sizeof(uint32_t));
   vgactl_port_base[0] = ((SCREEN_W) << 16) | (SCREEN_H);
-  add_pio_map("screen", VGACTL_PORT, (void *)vgactl_port_base, 32, NULL);
-  add_mmio_map("screen", VGACTL_MMIO, (void *)vgactl_port_base, 32, NULL);
-  add_mmio_map("sync", SYNC_MEM, (void *)(vgactl_port_base + 1), 32, NULL);
+  add_pio_map("screen", VGACTL_PORT, (void *)vgactl_port_base, sizeof(uint32_t), NULL);
+  add_mmio_map("screen", VGACTL_MMIO, (void *)vgactl_port_base, sizeof(uint32_t), NULL);
+	
+	vgactl_port_base[1] = 1;
+  add_mmio_map("sync", SYNC_MEM, (void *)(&vgactl_port_base[1]), sizeof(uint32_t), NULL);
 
   vmem = (void *)new_space(SCREEN_SIZE);
   add_mmio_map("vmem", VMEM, (void *)vmem, SCREEN_SIZE, NULL);

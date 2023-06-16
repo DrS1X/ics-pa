@@ -48,11 +48,8 @@ static void i8042_data_io_handler(uint32_t offset, int len, bool is_write) {
 }
 
 void send_key(uint8_t scancode, bool is_keydown) {
-	printf("sk\n");
-	printf(">>> %d \n", keymap[SDL_SCANCODE_0]);
   if (nemu_state.state == NEMU_RUNNING &&
       keymap[scancode] != _KEY_NONE) {
-		printf("sk\n");
     uint32_t am_scancode = keymap[scancode] | (is_keydown ? KEYDOWN_MASK : 0);
     key_queue[key_r] = am_scancode;
     key_r = (key_r + 1) % KEY_QUEUE_LEN;

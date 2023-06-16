@@ -14,7 +14,7 @@ static inline def_EHelper(auipc) {
 static inline def_EHelper(jal) {
 	rtl_add(s, ddest, PC_4, rz);
 
-	rtl_addi(s, s0, PC, id_src1->imm);
+	rtl_addi(s, s0, PC, id_src1->simm);
 	rtl_jr(s, s0);	// s->jmp_pc = s0
 
   print_asm_template2(jal);
