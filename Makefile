@@ -1,16 +1,23 @@
-include nemu/Makefile.git
+STUID = 211220000
+STUNAME = 张三
 
-default:
-	@echo "Please run 'make' under any subprojects to compile."
+# DO NOT modify the following code!!!
 
-clean:
-	-$(MAKE) -s -C nemu clean
-	-$(MAKE) -s -C abstract-machine clean-all
-	-$(MAKE) -s -C nanos-lite clean
-	-$(MAKE) -s -C navy-apps clean
+GITFLAGS = -q --author='tracer-ics2022 <tracer@njuics.org>' --no-verify --allow-empty
 
-submit: clean
+# prototype: git_commit(msg)
+define git_commit
+	-@git add $(NEMU_HOME)/.. -A --ignore-errors
+	-@while (test -e .git/index.lock); do sleep 0.1; done
+	-@(echo "> $(1)" && echo $(STUID) $(STUNAME) && uname -a && uptime) | git commit -F - $(GITFLAGS)
+	-@sync
+endef
+
+_default:
+	@echo "Please run 'make' under subprojects."
+
+submit:
 	git gc
-	STUID=$(STUID) STUNAME=$(STUNAME) bash -c "$$(curl -s http://jyywiki.cn/static/submit.sh)"
+	STUID=$(STUID) STUNAME=$(STUNAME) bash -c "$$(curl -s http://why.ink:8080/static/submit.sh)"
 
-.PHONY: default clean submit
+.PHONY: default submit
