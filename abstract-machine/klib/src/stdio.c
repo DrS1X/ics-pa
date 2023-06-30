@@ -6,7 +6,7 @@
 #if !defined(__ISA_NATIVE__) || defined(__NATIVE_USE_KLIB__)
 
 #define BUF_SIZE 1024
-#define REM_SIZE 128
+#define REM_SIZE 1024
 
 struct number {
 	uint32_t val;
@@ -17,10 +17,6 @@ struct number {
 };
 
 char* num2str (struct number *num, char* buf) {
-	/*putch('!');
-	putch(num->width + '0');
-	putch('\n');
-	*/
 	buf[BUF_SIZE - 1] = '\0';
 	int i = BUF_SIZE - 2;
 	while (num->val != 0){ 
@@ -57,7 +53,7 @@ char* num2str (struct number *num, char* buf) {
 
 enum {PRT_FMT, PRT_NONE, PRT_ESCAPE, PRT_FMT_W};
 
-int _vsnprintf(char *out, size_t n, const char *fmt, va_list ap, char* remain){
+int _vsnprintf(char *out, size_t n, const char *fmt, va_list *ap, char* remain){
 	out[0] = '\0';
 	size_t i = 0;
 	char *tail, buf[BUF_SIZE];
@@ -116,11 +112,11 @@ int _vsnprintf(char *out, size_t n, const char *fmt, va_list ap, char* remain){
 						num.prefix[1] = '\0';
 						break;
 					case 's':              /* string */
-						tail = va_arg(ap, char *);
+						tail = va_arg(*ap, char *);
 				    state = PRT_NONE;
 						break;
 					case 'd':{              /* decimal int */
-						int d = va_arg(ap, int);
+						int d = va_arg(*ap, int);
 						if (d < 0){
 							num.prefix[0] = '-';
 							num.prefix[1] = '\0';
@@ -132,7 +128,7 @@ int _vsnprintf(char *out, size_t n, const char *fmt, va_list ap, char* remain){
 						break;
 					}
 					case 'x':{              /* hexadecimal int */
-						int d = va_arg(ap, int);
+						int d = va_arg(*ap, int);
 						num.base = 16;
 						if (num.prefix[0] != '\0') { 
 							num.prefix[0] = '0';
@@ -145,7 +141,7 @@ int _vsnprintf(char *out, size_t n, const char *fmt, va_list ap, char* remain){
 						break;
 					}
 					case 'p': {							/* pointer */
-							uintptr_t p = va_arg(ap, uintptr_t);	
+							uintptr_t p = va_arg(*ap, uintptr_t);	
 							num.base = 16;
 							strcpy(num.prefix, "0x");
 							num.val = p;
@@ -154,7 +150,7 @@ int _vsnprintf(char *out, size_t n, const char *fmt, va_list ap, char* remain){
 							break;
 					}
 					case 'c': {             /* char */
-							char c = (char) va_arg(ap, int);
+							char c = (char) va_arg(*ap, int);
 							buf[0] = c;
 							buf[1] = '\0';
 							tail = buf;
@@ -177,8 +173,10 @@ int _vsnprintf(char *out, size_t n, const char *fmt, va_list ap, char* remain){
 				if (n - i - 1 > strlen(tail)) {
 					i += strlen(tail);
 				} else {
-					if (remain)
-						strncpy(remain, tail + n - i - 1, REM_SIZE);
+					if (remain) {
+						strncpy(remain, tail + n - i - 1, REM_SIZE - 1);
+						remain[REM_SIZE - 1] = '\0';
+					}
 					i = n - 1;
 					break;
 				}
@@ -198,7 +196,7 @@ int printf(const char *fmt, ...) {
 	do {
 		buf[0] = '\0';
 		remain[0] = '\0';
-		changed += _vsnprintf(buf, BUF_SIZE, fmt, ap, remain);
+		changed += _vsnprintf(buf, BUF_SIZE, fmt, &ap, remain);
 		assert(strlen(buf) <= BUF_SIZE);
 		assert(strlen(remain) <= REM_SIZE); 
 		putstr(buf);

@@ -8,14 +8,16 @@ const char *regs[] = {
   "s8", "s9", "s10", "s11", "t3", "t4", "t5", "t6"
 };
 
+const char *csr[] = { "sstatus", "stvec", "sepc", "scause" };
+const int csr_id[] = { 0x100, 0x105, 0x141, 0x142 };
+
 void isa_reg_display() {
 	for(int i = 0; i < 32; ++i)
-		printf("%s: %u; ", reg_name(i), (uint32_t)cpu.gpr[i]._32);
+		printf("%s: %#x; ", reg_name(i), (uint32_t)cpu.gpr[i]._32);
 	printf("\n");
 }
 
 word_t isa_reg_str2val(const char *s, bool *success) {
-		// hashmap
 	*success = true;
 	for(int i = 0; i < 32; ++i){
 		if(strcmp(s,reg_name(i)) == 0)
@@ -23,4 +25,11 @@ word_t isa_reg_str2val(const char *s, bool *success) {
 	}
 	*success = false;
 	return 0;
+}
+
+rtlreg_t *get_reg_ptr_by_name(const char *s) {
+	for (int i = 0; i < 4; ++i) 
+		if (strcmp(s, csr[i]) == 0) 
+			return &cpu.csr[i]._32;
+	return NULL;
 }

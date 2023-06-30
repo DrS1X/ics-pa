@@ -12,6 +12,10 @@ typedef struct {
   struct {
     rtlreg_t _32;
   } gpr[32];
+	
+  struct {
+    rtlreg_t _32;
+  } csr[4];
 
   vaddr_t pc;	// pc is an isolate register that only store memory address
 } riscv32_CPU_state;

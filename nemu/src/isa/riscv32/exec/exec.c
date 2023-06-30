@@ -82,6 +82,16 @@ static inline def_EHelper(store) {
   }
 }
 
+static inline def_EHelper(csr) {
+  decode_op_r(s, id_src2, s->isa.instr.i.simm11_0, true);
+  switch (s->isa.instr.i.funct3) {
+		EX  (0b000, ecall_ebreak);
+		EX  (0b001, csrrw);
+		EX  (0b010, csrrs);
+    default: exec_inv(s);
+	}
+}
+
 static inline void fetch_decode_exec(DecodeExecState *s) {
   s->isa.instr.val = instr_fetch(&s->seq_pc, 4);
   Assert(s->isa.instr.i.opcode1_0 == 0x3, "Invalid instruction");
@@ -90,6 +100,7 @@ static inline void fetch_decode_exec(DecodeExecState *s) {
     IDEX (0b00101, U, auipc)
     IDEX (0b11011, J, jal)
     IDEX (0b11001, I, jalr)
+    IDEX (0b11100, I, csr);
     IDEX (0b11000, B, conditional_branches)
     IDEX (0b00000, I, load)
     IDEX (0b01000, S, store)
