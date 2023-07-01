@@ -83,9 +83,11 @@ static inline def_EHelper(store) {
 }
 
 static inline def_EHelper(csr) {
-  decode_op_r(s, id_src2, s->isa.instr.i.simm11_0, true);
+	if (s->isa.instr.i.funct3)
+		decode_op_r(s, id_src2, s->isa.instr.i.simm11_0, true);
+
   switch (s->isa.instr.i.funct3) {
-		EX  (0b000, ecall_ebreak);
+		EX  (0b000, privileged_inst);
 		EX  (0b001, csrrw);
 		EX  (0b010, csrrs);
     default: exec_inv(s);

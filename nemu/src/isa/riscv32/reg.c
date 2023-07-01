@@ -28,8 +28,13 @@ word_t isa_reg_str2val(const char *s, bool *success) {
 }
 
 rtlreg_t *get_reg_ptr_by_name(const char *s) {
+	for(int i = 0; i < 32; ++i)
+		if(strcmp(s,reg_name(i)) == 0)
+				return &cpu.gpr[i]._32;
+	
 	for (int i = 0; i < 4; ++i) 
 		if (strcmp(s, csr[i]) == 0) 
 			return &cpu.csr[i]._32;
+
 	return NULL;
 }
