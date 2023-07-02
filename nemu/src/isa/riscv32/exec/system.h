@@ -1,7 +1,6 @@
 void raise_intr(DecodeExecState *s, word_t NO, vaddr_t epc);
 
 static inline def_EHelper(privileged_inst) {
-	//isa_reg_display();
 	switch (id_src2->imm) {
 		case 0b000000000000:
 			raise_intr(s, 8, cpu.pc);
