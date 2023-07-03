@@ -14,12 +14,24 @@ Context* __am_irq_handle(Context *c) {
   if (user_handler) {
     Event ev = {0};
     switch (c->cause) {
-			case 8: ev.event = EVENT_YIELD; break;
-      default: ev.event = EVENT_ERROR; break;
+			case 8: 
+				if (c->GPR1 == -1)
+					ev.event = EVENT_YIELD; 
+				else
+					ev.event = EVENT_SYSCALL; 
+				break;
+      default: ev.event = EVENT_ERROR;
     }
 
     c = user_handler(ev, c);
     assert(c != NULL);
+
+    switch (c->cause) {
+			case 8: 				
+				c->epc += 4; 
+				break;
+
+		}
   }
 
   return c;

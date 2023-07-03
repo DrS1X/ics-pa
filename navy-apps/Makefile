@@ -5,6 +5,12 @@ html:
 	cat Makefile | sed 's/^\([^#]\)/    \1/g' | markdown_py > Makefile.html
 .PHONY: html
 
+ELF = $(shell find build/ -maxdepth 1 -type f) 
+elf: $(ELF) 
+	cat $(ELF) >  ~/ics2020/nanos-lite/build/ramdisk.img
+
+ISA ?= riscv32
+
 ## 1. Basic Setup and Checks
 
 ### Default to build an application
