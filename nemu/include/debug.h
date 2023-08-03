@@ -28,4 +28,11 @@
 
 #define TODO() panic("please implement me")
 
+#define FUNC_TAB_SIZE 256
+
+typedef struct {
+	uintptr_t start, end;
+	char name[16];
+}Func; 
+
 #endif

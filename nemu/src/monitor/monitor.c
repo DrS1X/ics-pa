@@ -3,16 +3,38 @@
 #include <monitor/monitor.h>
 #include <getopt.h>
 #include <stdlib.h>
+#include <elf.h>
+#include <assert.h>
 
-void init_log(const char *log_file);
+#if defined(__ISA_native__)
+# define EXPECT_TYPE EM_X86_64
+#elif defined(__ISA_riscv32__)
+# define EXPECT_TYPE EM_RISCV  // see /usr/include/elf.h to get the right type
+#else
+# error Unsupported ISA
+#endif
+
+#ifdef ISA64 
+# define Elf_Ehdr Elf64_Ehdr
+# define Elf_Shdr Elf64_Shdr 
+# define Elf_Sym Elf64_Sym 
+#else
+# define Elf_Ehdr Elf32_Ehdr
+# define Elf_Shdr Elf32_Shdr
+# define Elf_Sym Elf32_Sym 
+#endif
+
+void init_log(const char *log_file, const char *ftrace_log_file);
 void init_mem();
 void init_regex();
 void init_wp_pool();
 void init_difftest(char *ref_so_file, long img_size, int port);
 
 static char *log_file = NULL;
+static char ftrace_log_file[256] = {};
 static char *diff_so_file = NULL;
 static char *img_file = NULL;
+static char img_elf[256] = {};
 static int batch_mode = false;
 static int difftest_port = 1234;
 
@@ -55,6 +77,73 @@ static inline long load_img() {
   return size;
 }
 
+static inline void load_elf() {
+	extern Func func_tab[]; 
+	FILE *fp = fopen(img_elf, "rb");
+	assert(fp);
+	size_t rn;
+	Elf_Ehdr Ehdr;
+	rn = fread(&Ehdr, sizeof(Ehdr), 1, fp);
+	assert(rn == 1); 
+  assert(*(uint32_t *)Ehdr.e_ident == 0x464c457f);	// little endian
+  assert(EXPECT_TYPE == Ehdr.e_machine);
+	
+  uintptr_t symtab_off = 0, symtab_entsize = 0, symtab_end = 0;
+	uintptr_t strtab_off = 0; 
+	uintptr_t shentoff = Ehdr.e_shoff;
+	uintptr_t sh_end = Ehdr.e_shoff + Ehdr.e_shentsize * Ehdr.e_shnum;
+	while (shentoff < sh_end) { 
+		Elf_Shdr Shdr;
+		fseek(fp, shentoff, SEEK_SET);
+	  rn = fread(&Shdr, sizeof(Shdr), 1, fp);
+	  assert(rn == 1); 
+
+		if (Shdr.sh_type == SHT_SYMTAB) {
+			symtab_off = Shdr.sh_offset;
+			symtab_entsize = Shdr.sh_entsize;
+			symtab_end = Shdr.sh_offset + Shdr.sh_size;
+
+			fseek(fp, Ehdr.e_shoff + Shdr.sh_link * Ehdr.e_shentsize, SEEK_SET);
+			rn = fread(&Shdr, sizeof(Shdr), 1, fp);
+	    assert(rn == 1); 
+			strtab_off = Shdr.sh_offset;
+		}
+
+		shentoff += Ehdr.e_shentsize;
+	}
+
+	Elf_Sym sym;
+	int i = 0;
+	while (symtab_off < symtab_end && i < FUNC_TAB_SIZE - 1) {
+		fseek(fp, symtab_off, SEEK_SET);
+		rn = fread(&sym, sizeof(sym), 1, fp);	
+		assert(rn == 1); 
+		if (ELF32_ST_TYPE(sym.st_info) == STT_FUNC) {
+			assert(i < 256);
+			func_tab[i].start = sym.st_value;
+			func_tab[i].end = sym.st_value + sym.st_size;
+
+			fseek(fp, strtab_off + sym.st_name, SEEK_SET);
+			rn = fread(func_tab[i].name, 16, 1, fp);	
+			assert(rn == 1); 
+			++i;
+		}
+		symtab_off += symtab_entsize;
+	}
+	func_tab[i].end = 0;
+	strcpy(func_tab[i].name, "???");
+
+	extern FILE *ftrace_log_fp;
+	fprintf(ftrace_log_fp, "Function tab\n");
+	for (int i = 0; i < FUNC_TAB_SIZE && func_tab[i].end != 0; ++i) {
+		fprintf(ftrace_log_fp, "[%lx, %lx] %s\n",  
+				func_tab[i].start, func_tab[i].end, func_tab[i].name); 
+	}
+	fprintf(ftrace_log_fp, "Function tab\n\n");
+
+	return;
+}
+
 static inline void parse_args(int argc, char *argv[]) {
   const struct option table[] = {
     {"batch"    , no_argument      , NULL, 'b'},
@@ -69,11 +158,23 @@ static inline void parse_args(int argc, char *argv[]) {
     switch (o) {
       case 'b': batch_mode = true; break;
       case 'p': sscanf(optarg, "%d", &difftest_port); break;
-      case 'l': log_file = optarg; break;
+      case 'l': 
+				log_file = optarg;
+				
+				strcpy(ftrace_log_file, log_file);
+				ftrace_log_file[strlen(ftrace_log_file) - 4] = '\0';
+				strcat(ftrace_log_file, "-ftrace.txt");
+				break;
       case 'd': diff_so_file = optarg; break;
       case 1:
         if (img_file != NULL) Log("too much argument '%s', ignored", optarg);
-        else img_file = optarg;
+				else {
+					img_file = optarg;
+
+					strcpy(img_elf, img_file);
+					img_elf[strlen(img_elf) - 4] = '\0';
+					strcat(img_elf, ".elf");
+				}
         break;
       default:
         printf("Usage: %s [OPTION...] IMAGE\n\n", argv[0]);
@@ -94,13 +195,16 @@ void init_monitor(int argc, char *argv[]) {
   parse_args(argc, argv);
 
   /* Open the log file. */
-  init_log(log_file);
+  init_log(log_file, ftrace_log_file);
 
   /* Fill the memory with garbage content. */
   init_mem();
 
   /* Perform ISA dependent initialization. */
   init_isa();
+
+	/* Load the ELF file of image for function trace. */
+  load_elf();
 
   /* Load the image to memory. This will overwrite the built-in image. */
   long img_size = load_img();

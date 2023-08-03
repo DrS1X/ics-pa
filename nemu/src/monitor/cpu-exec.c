@@ -24,6 +24,7 @@ static uint64_t g_timer = 0; // unit: ms
 const rtlreg_t rzero = 0;
 
 void asm_print(vaddr_t this_pc, int instr_len, bool print_flag);
+void ftrace_print(vaddr_t this_pc);
 
 int is_exit_status_bad() {
   int good = (nemu_state.state == NEMU_END && nemu_state.halt_ret == 0) ||
@@ -88,7 +89,7 @@ void cpu_exec(uint64_t n) {
 
 #ifdef DEBUG
     asm_print(this_pc, seq_pc - this_pc, n < MAX_INSTR_TO_PRINT);
-
+    ftrace_print(this_pc);
     /* check watchpoints here. */
 		if(check_wp()){
 				printf("seq_pc: %u\n", seq_pc);

@@ -1,18 +1,94 @@
 #include <NDL.h>
+#include <SDL.h>
 #include <sdl-video.h>
 #include <assert.h>
 #include <string.h>
 #include <stdlib.h>
+#include <stdio.h>
+
+static Uint32 getpixel(SDL_Surface *surface, int x, int y) {
+    int bpp = surface->format->BytesPerPixel;
+    /* Here p is the address to the pixel we want to retrieve */
+    Uint8 *p = (Uint8 *)surface->pixels + y * surface->pitch + x * bpp;
+
+    switch(bpp) {
+    case 1:
+        return *p;
+
+    case 2:
+        return *(Uint16 *)p;
+
+    case 3:
+        if(BYTE_ORDER == BIG_ENDIAN)
+            return p[0] << 16 | p[1] << 8 | p[2];
+        else
+            return p[0] | p[1] << 8 | p[2] << 16;
+
+    case 4:
+        return *(Uint32 *)p;
+
+    default:
+        return 0;       /* shouldn't happen, but avoids warnings */
+    }
+}
+
+static void putpixel(SDL_Surface *surface, int x, int y, Uint32 pixel) {
+    int bpp = surface->format->BytesPerPixel;
+    /* Here p is the address to the pixel we want to set */
+    Uint8 *p = (Uint8 *)surface->pixels + y * surface->pitch + x * bpp;
+
+    switch(bpp) {
+    case 1:
+        *p = pixel;
+        break;
+
+    case 2:
+        *(Uint16 *)p = pixel;
+        break;
+
+    case 3:
+        if(BYTE_ORDER == BIG_ENDIAN) {
+            p[0] = (pixel >> 16) & 0xff;
+            p[1] = (pixel >> 8) & 0xff;
+            p[2] = pixel & 0xff;
+        } else {
+            p[0] = pixel & 0xff;
+            p[1] = (pixel >> 8) & 0xff;
+            p[2] = (pixel >> 16) & 0xff;
+        }
+        break;
+
+    case 4:
+        *(Uint32 *)p = pixel;
+        break;
+    }
+}
 
 void SDL_BlitSurface(SDL_Surface *src, SDL_Rect *srcrect, SDL_Surface *dst, SDL_Rect *dstrect) {
   assert(dst && src);
   assert(dst->format->BitsPerPixel == src->format->BitsPerPixel);
+	int dst_x = dstrect ? dstrect->x : 0, dst_y = dstrect ? dstrect->y : 0;
+	int src_x = srcrect ? srcrect->x : 0, src_y = srcrect ? srcrect->y : 0;
+	int w = srcrect ? srcrect->w : src->w, h = srcrect ? srcrect->h : src->h;
+	for (int i = 0; i < h; ++i) 
+		for (int j = 0; j < w; ++j) 
+			putpixel(dst, i + dst_y, j + dst_x, getpixel(src, i + src_y, j + src_x));
 }
 
 void SDL_FillRect(SDL_Surface *dst, SDL_Rect *dstrect, uint32_t color) {
+	int dst_x = dstrect ? dstrect->x : 0, dst_y = dstrect ? dstrect->y : 0;
+	int w = dstrect ? dstrect->w : dst->w, h = dstrect ? dstrect->h : dst->h;
+  for (int r = 0; r < h; ++r) 
+		for (int c = 0; c < w; ++c)
+			putpixel(dst, c + dst_x, r + dst_y, color);
 }
 
 void SDL_UpdateRect(SDL_Surface *s, int x, int y, int w, int h) {
+	if (x == 0 && y == 0 && w == 0 && h == 0) {
+		w = s->w; h = s->h;
+	}
+
+  NDL_DrawRect((uint32_t*)s->pixels, x, y, w, h);
 }
 
 // APIs below are already implemented.

@@ -75,7 +75,7 @@ int _close(int fd) {
 
 void *_sbrk(intptr_t increment) {
 	extern char _end;
-  static void* _brk = &_end;
+  static void* _brk = &_end + 4;
 	
 	void* old_brk = _brk; 
 	void* new_brk = old_brk + increment;

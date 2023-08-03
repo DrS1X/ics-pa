@@ -38,6 +38,17 @@ static inline void update_pc(DecodeExecState *s) {
   cpu.pc = (s->is_jmp ? s->jmp_pc : s->seq_pc);
 }
 
+static inline char* get_func_name(uintptr_t addr) {
+	extern Func func_tab[];
+	int i = 0;
+	for (; i < FUNC_TAB_SIZE && func_tab[i].end != 0; ++i)
+		if (addr >= func_tab[i].start && addr < func_tab[i].end) {
+			break;
+		}
+
+	return func_tab[i].name;
+}
+
 #ifdef DEBUG
 #define print_asm(...) \
   do { \

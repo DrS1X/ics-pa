@@ -33,6 +33,8 @@ typedef uint64_t Uint64;
 
 #define SDLCALL
 
+#define TODO(func) printf("please implement me %s.\n", func);
+
 // define correct SDL key names
 #define SDLK_a   SDLK_A
 #define SDLK_b   SDLK_B

@@ -67,7 +67,10 @@ int fs_open(const char *pathname, int flags, int mode) {
 	int i;
 	for (i = 0; i < file_num && strcmp(file_table[i].name, pathname) != 0; ++i); 
 
-	assert(i < file_num);	
+  if (i >= file_num) {
+		printf("Fail: fs_open(%s,,), i=%d, file_num=%d\n", pathname, i, file_num);
+		assert(0);
+	}
 
 	file_table[i].open_offset = 0;
 	if (!file_table[i].read)

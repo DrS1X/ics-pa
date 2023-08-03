@@ -28,7 +28,7 @@ size_t events_read(void *buf, size_t offset, size_t len) {
 
 	char up_down = event.keydown ? 'd' : 'u';
 	const char * key_name = keyname[event.keycode];
-	int written = snprintf((char*) buf, len, "k%c %s\n", up_down, key_name);
+	int written = snprintf((char*) buf, len, "k%c %s", up_down, key_name);
 	assert(written >= 0);
   return written;
 }

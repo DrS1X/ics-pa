@@ -17,6 +17,10 @@ static inline def_EHelper(jal) {
 	rtl_addi(s, s0, PC, id_src1->simm);
 	rtl_jr(s, s0);	// s->jmp_pc = s0
 
+	extern char log_ftrace_buf[];
+	if (strcmp(id_dest->str, "ra") == 0)
+		sprintf(log_ftrace_buf, "call [%s@%x]", get_func_name(*s0), *s0);
+
   print_asm_template2(jal);
 }
 
@@ -27,6 +31,12 @@ static inline def_EHelper(jalr) {
 	rtl_jr(s, s0);
 
 	rtl_add(s, ddest, PC_4, rz);
+
+	extern char log_ftrace_buf[];
+	if (strcmp(id_dest->str, "ra") == 0)
+		sprintf(log_ftrace_buf, "call [%s@%x]", get_func_name(*s0), *s0);
+	else if (strcmp(id_src1->str, "ra") == 0)
+		sprintf(log_ftrace_buf, "ret [%s]", get_func_name(*dsrc1));
 
   print_asm_template3(jalr);
 }
