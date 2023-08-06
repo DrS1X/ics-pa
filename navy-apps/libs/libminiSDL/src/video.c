@@ -7,6 +7,7 @@
 #include <stdio.h>
 
 static Uint32 getpixel(SDL_Surface *surface, int x, int y) {
+	  assert(x < surface->w && y < surface->h);
     int bpp = surface->format->BytesPerPixel;
     /* Here p is the address to the pixel we want to retrieve */
     Uint8 *p = (Uint8 *)surface->pixels + y * surface->pitch + x * bpp;
@@ -33,6 +34,7 @@ static Uint32 getpixel(SDL_Surface *surface, int x, int y) {
 }
 
 static void putpixel(SDL_Surface *surface, int x, int y, Uint32 pixel) {
+	  assert(x < surface->w && y < surface->h);
     int bpp = surface->format->BytesPerPixel;
     /* Here p is the address to the pixel we want to set */
     Uint8 *p = (Uint8 *)surface->pixels + y * surface->pitch + x * bpp;
@@ -70,17 +72,25 @@ void SDL_BlitSurface(SDL_Surface *src, SDL_Rect *srcrect, SDL_Surface *dst, SDL_
 	int dst_x = dstrect ? dstrect->x : 0, dst_y = dstrect ? dstrect->y : 0;
 	int src_x = srcrect ? srcrect->x : 0, src_y = srcrect ? srcrect->y : 0;
 	int w = srcrect ? srcrect->w : src->w, h = srcrect ? srcrect->h : src->h;
-	for (int i = 0; i < h; ++i) 
-		for (int j = 0; j < w; ++j) 
-			putpixel(dst, i + dst_y, j + dst_x, getpixel(src, i + src_y, j + src_x));
+	for (int y = 0; y < h; ++y) {
+		for (int x = 0; x < w; ++x) {
+			if (y + dst_y >= dst->h) return;
+			if (x + dst_x >= dst->w) break;
+			putpixel(dst, x + dst_x, y + dst_y, getpixel(src, x + src_x, y + src_y));
+		}
+	}
 }
 
 void SDL_FillRect(SDL_Surface *dst, SDL_Rect *dstrect, uint32_t color) {
 	int dst_x = dstrect ? dstrect->x : 0, dst_y = dstrect ? dstrect->y : 0;
 	int w = dstrect ? dstrect->w : dst->w, h = dstrect ? dstrect->h : dst->h;
-  for (int r = 0; r < h; ++r) 
-		for (int c = 0; c < w; ++c)
-			putpixel(dst, c + dst_x, r + dst_y, color);
+  for (int y = 0; y < h; ++y) {
+		for (int x = 0; x < w; ++x) {
+			if (y + dst_y >= dst->h) return;
+			if (x + dst_x >= dst->w) break;
+			putpixel(dst, x + dst_x, y + dst_y, color);
+		}
+	}
 }
 
 void SDL_UpdateRect(SDL_Surface *s, int x, int y, int w, int h) {

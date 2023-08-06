@@ -30,11 +30,12 @@ void init_regex();
 void init_wp_pool();
 void init_difftest(char *ref_so_file, long img_size, int port);
 
-static char *log_file = NULL;
+static char log_file[256] = {};
 static char ftrace_log_file[256] = {};
 static char *diff_so_file = NULL;
 static char *img_file = NULL;
-static char img_elf[256] = {};
+static char *img_elf[5];
+static int img_elf_i = 0;
 static int batch_mode = false;
 static int difftest_port = 1234;
 
@@ -77,69 +78,76 @@ static inline long load_img() {
   return size;
 }
 
-static inline void load_elf() {
+static inline void init_function_table() {
 	extern Func func_tab[]; 
-	FILE *fp = fopen(img_elf, "rb");
-	assert(fp);
-	size_t rn;
-	Elf_Ehdr Ehdr;
-	rn = fread(&Ehdr, sizeof(Ehdr), 1, fp);
-	assert(rn == 1); 
-  assert(*(uint32_t *)Ehdr.e_ident == 0x464c457f);	// little endian
-  assert(EXPECT_TYPE == Ehdr.e_machine);
-	
-  uintptr_t symtab_off = 0, symtab_entsize = 0, symtab_end = 0;
-	uintptr_t strtab_off = 0; 
-	uintptr_t shentoff = Ehdr.e_shoff;
-	uintptr_t sh_end = Ehdr.e_shoff + Ehdr.e_shentsize * Ehdr.e_shnum;
-	while (shentoff < sh_end) { 
-		Elf_Shdr Shdr;
-		fseek(fp, shentoff, SEEK_SET);
-	  rn = fread(&Shdr, sizeof(Shdr), 1, fp);
-	  assert(rn == 1); 
+	int func_i = 0;
+	for (img_elf_i--; img_elf_i >= 0; img_elf_i--) {
+		FILE *fp = fopen(img_elf[img_elf_i], "rb");
+		assert(fp);
+		long elf_off = 0;
+		while (1) {
+			size_t rn;
+			Elf_Ehdr Ehdr;
+			fseek(fp, elf_off, SEEK_SET);
+			rn = fread(&Ehdr, sizeof(Ehdr), 1, fp);
 
-		if (Shdr.sh_type == SHT_SYMTAB) {
-			symtab_off = Shdr.sh_offset;
-			symtab_entsize = Shdr.sh_entsize;
-			symtab_end = Shdr.sh_offset + Shdr.sh_size;
+			if (rn != 1 || *(uint32_t *)Ehdr.e_ident != 0x464c457f)	// little endian
+				break;
+			assert(EXPECT_TYPE == Ehdr.e_machine);
+			elf_off += Ehdr.e_shoff + Ehdr.e_shnum * Ehdr.e_shentsize;
+			
+			uintptr_t symtab_off = 0, symtab_entsize = 0, symtab_end = 0;
+			uintptr_t strtab_off = 0; 
+			uintptr_t shentoff = Ehdr.e_shoff;
+			uintptr_t sh_end = Ehdr.e_shoff + Ehdr.e_shentsize * Ehdr.e_shnum;
+			while (shentoff < sh_end) { 
+				Elf_Shdr Shdr;
+				fseek(fp, shentoff, SEEK_SET);
+				rn = fread(&Shdr, sizeof(Shdr), 1, fp);
+				assert(rn == 1); 
 
-			fseek(fp, Ehdr.e_shoff + Shdr.sh_link * Ehdr.e_shentsize, SEEK_SET);
-			rn = fread(&Shdr, sizeof(Shdr), 1, fp);
-	    assert(rn == 1); 
-			strtab_off = Shdr.sh_offset;
+				if (Shdr.sh_type == SHT_SYMTAB) {
+					symtab_off = Shdr.sh_offset;
+					symtab_entsize = Shdr.sh_entsize;
+					symtab_end = Shdr.sh_offset + Shdr.sh_size;
+
+					fseek(fp, Ehdr.e_shoff + Shdr.sh_link * Ehdr.e_shentsize, SEEK_SET);
+					rn = fread(&Shdr, sizeof(Shdr), 1, fp);
+					assert(rn == 1); 
+					strtab_off = Shdr.sh_offset;
+				}
+				shentoff += Ehdr.e_shentsize;
+			}
+
+			Elf_Sym sym;
+			while (symtab_off < symtab_end && func_i < FUNC_TAB_SIZE - 1) {
+				fseek(fp, symtab_off, SEEK_SET);
+				rn = fread(&sym, sizeof(sym), 1, fp);	
+				assert(rn == 1); 
+				if (ELF32_ST_TYPE(sym.st_info) == STT_FUNC) {
+					assert(func_i < FUNC_TAB_SIZE);
+					func_tab[func_i].start = sym.st_value;
+					func_tab[func_i].end = sym.st_value + sym.st_size;
+
+					fseek(fp, strtab_off + sym.st_name, SEEK_SET);
+					rn = fread(func_tab[func_i].name, 16, 1, fp);	
+					assert(rn == 1); 
+					++func_i;
+				}
+				symtab_off += symtab_entsize;
+			}
 		}
-
-		shentoff += Ehdr.e_shentsize;
 	}
-
-	Elf_Sym sym;
-	int i = 0;
-	while (symtab_off < symtab_end && i < FUNC_TAB_SIZE - 1) {
-		fseek(fp, symtab_off, SEEK_SET);
-		rn = fread(&sym, sizeof(sym), 1, fp);	
-		assert(rn == 1); 
-		if (ELF32_ST_TYPE(sym.st_info) == STT_FUNC) {
-			assert(i < 256);
-			func_tab[i].start = sym.st_value;
-			func_tab[i].end = sym.st_value + sym.st_size;
-
-			fseek(fp, strtab_off + sym.st_name, SEEK_SET);
-			rn = fread(func_tab[i].name, 16, 1, fp);	
-			assert(rn == 1); 
-			++i;
-		}
-		symtab_off += symtab_entsize;
-	}
-	func_tab[i].end = 0;
-	strcpy(func_tab[i].name, "???");
+	func_tab[func_i].end = 0;
+	strcpy(func_tab[func_i].name, "???");
 
 	extern FILE *ftrace_log_fp;
-	fprintf(ftrace_log_fp, "Function tab\n");
+	fprintf(ftrace_log_fp, "Function Table\n");
 	for (int i = 0; i < FUNC_TAB_SIZE && func_tab[i].end != 0; ++i) {
 		fprintf(ftrace_log_fp, "[%lx, %lx] %s\n",  
 				func_tab[i].start, func_tab[i].end, func_tab[i].name); 
 	}
-	fprintf(ftrace_log_fp, "Function tab\n\n");
+	fprintf(ftrace_log_fp, "Function Table\n\n");
 
 	return;
 }
@@ -148,38 +156,36 @@ static inline void parse_args(int argc, char *argv[]) {
   const struct option table[] = {
     {"batch"    , no_argument      , NULL, 'b'},
     {"log"      , required_argument, NULL, 'l'},
+		{"elf"			, required_argument, NULL, 'e'},
     {"diff"     , required_argument, NULL, 'd'},
     {"port"     , required_argument, NULL, 'p'},
     {"help"     , no_argument      , NULL, 'h'},
     {0          , 0                , NULL,  0 },
   };
   int o;
-  while ( (o = getopt_long(argc, argv, "-bhl:d:p:", table, NULL)) != -1) {
+  while ( (o = getopt_long(argc, argv, "-bhl:d:p:e:", table, NULL)) != -1) {
     switch (o) {
       case 'b': batch_mode = true; break;
       case 'p': sscanf(optarg, "%d", &difftest_port); break;
-      case 'l': 
-				log_file = optarg;
-				
-				strcpy(ftrace_log_file, log_file);
-				ftrace_log_file[strlen(ftrace_log_file) - 4] = '\0';
-				strcat(ftrace_log_file, "-ftrace.txt");
-				break;
+      case 'l': {
+					strcpy(log_file, optarg);
+					strcpy(ftrace_log_file, optarg);
+					strcat(log_file, "nemu-log.txt");
+					strcat(ftrace_log_file, "ftrace-nemu-log.txt");
+					break;
+			}
       case 'd': diff_so_file = optarg; break;
+			case 'e': img_elf[img_elf_i++] = optarg; break;
       case 1:
         if (img_file != NULL) Log("too much argument '%s', ignored", optarg);
-				else {
+				else 
 					img_file = optarg;
-
-					strcpy(img_elf, img_file);
-					img_elf[strlen(img_elf) - 4] = '\0';
-					strcat(img_elf, ".elf");
-				}
         break;
       default:
         printf("Usage: %s [OPTION...] IMAGE\n\n", argv[0]);
         printf("\t-b,--batch              run with batch mode\n");
-        printf("\t-l,--log=FILE           output log to FILE\n");
+        printf("\t-l,--log=DIR            output log to DIR\n");
+        printf("\t-e,--elf=FILE           parse FILE to get symbol table\n");
         printf("\t-d,--diff=REF_SO        run DiffTest with reference REF_SO\n");
         printf("\t-p,--port=PORT          run DiffTest with port PORT\n");
         printf("\n");
@@ -204,7 +210,7 @@ void init_monitor(int argc, char *argv[]) {
   init_isa();
 
 	/* Load the ELF file of image for function trace. */
-  load_elf();
+  init_function_table();
 
   /* Load the image to memory. This will overwrite the built-in image. */
   long img_size = load_img();

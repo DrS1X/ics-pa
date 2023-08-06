@@ -46,9 +46,10 @@ void ftrace_print(vaddr_t this_pc) {
 	static size_t stack_depth = 0;
 	if (log_ftrace_buf[0] == '\0') return;
 
+	if (log_ftrace_buf[0] == 'r') stack_depth--; // ret
   snprintf(tempbuf, sizeof(tempbuf), FMT_WORD ": %*.s%s", this_pc, (int)stack_depth, "", log_ftrace_buf);
-  log_write(ftrace_log_fp, "%s\n", tempbuf);
+	if (log_ftrace_buf[0] == 'c') stack_depth++; // call
 
-	stack_depth += log_ftrace_buf[0] == 'c' ? 1 : -1; // call OR ret
 	log_ftrace_buf[0] = '\0';
+  log_write(ftrace_log_fp, "%s\n", tempbuf);
 }

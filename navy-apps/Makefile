@@ -173,7 +173,7 @@ $(CLEAN_ALL):
 
 ### Build fsimg and ramdisk for Nanos-lite
 APPS = menu 
-TESTS = bmp-test 
+TESTS = 
 
 fsimg: $(addprefix apps/, $(APPS)) $(addprefix tests/, $(TESTS))
 	-for t in $^; do $(MAKE) -s -C $(NAVY_HOME)/$$t install; done
@@ -181,7 +181,7 @@ fsimg: $(addprefix apps/, $(APPS)) $(addprefix tests/, $(TESTS))
 RAMDISK = build/ramdisk.img
 RAMDISK_H = build/ramdisk.h
 $(RAMDISK): fsimg
-	$(eval FSIMG_FILES := $(shell find -L ./fsimg -type f))
+	$(eval FSIMG_FILES := $(shell find -L ./fsimg/bin ./fsimg/share/ -type f))
 	@mkdir -p $(@D)
 	@cat $(FSIMG_FILES) > $@
 	@truncate -s \%512 $@
