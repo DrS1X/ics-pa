@@ -1,6 +1,8 @@
 #include <common.h>
 #include <stdarg.h>
 
+#define LOG_MAX  (2 * 1024 * 1024)
+
 Func func_tab[FUNC_TAB_SIZE];
 
 FILE *log_fp = NULL;
@@ -31,6 +33,12 @@ void strcatf(char *buf, const char *fmt, ...) {
 }
 
 void asm_print(vaddr_t this_pc, int instr_len, bool print_flag) {
+	static uint64_t log_size = 0;
+	if (++log_size > LOG_MAX) {
+		rewind(log_fp);
+		log_size = 0;
+	}
+
   snprintf(tempbuf, sizeof(tempbuf), FMT_WORD ":   %s%*.s%s", this_pc, log_bytebuf,
       50 - (12 + 3 * instr_len), "", log_asmbuf);
   log_write(log_fp, "%s\n", tempbuf);
@@ -43,6 +51,12 @@ void asm_print(vaddr_t this_pc, int instr_len, bool print_flag) {
 }
 
 void ftrace_print(vaddr_t this_pc) {
+	static uint64_t log_size = 0;
+	if (++log_size > LOG_MAX) {
+		rewind(ftrace_log_fp);
+		log_size = 0;
+	}
+
 	static size_t stack_depth = 0;
 	if (log_ftrace_buf[0] == '\0') return;
 
@@ -52,4 +66,9 @@ void ftrace_print(vaddr_t this_pc) {
 
 	log_ftrace_buf[0] = '\0';
   log_write(ftrace_log_fp, "%s\n", tempbuf);
+}
+
+void end_of_log_file() {
+	log_write(log_fp, "^EOF\n");
+	log_write(ftrace_log_fp, "^EOF\n");
 }

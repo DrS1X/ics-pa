@@ -14,8 +14,7 @@
 
 // control when the log is printed, unit: number of instructions
 #define LOG_START (0)
-// restrict the size of log file
-#define LOG_END   (1024 * 1024 * 50)
+#define LOG_END   (0)
 
 CPU_state cpu = {};
 NEMUState nemu_state = { .state = NEMU_STOP };
@@ -25,6 +24,7 @@ const rtlreg_t rzero = 0;
 
 void asm_print(vaddr_t this_pc, int instr_len, bool print_flag);
 void ftrace_print(vaddr_t this_pc);
+void end_of_log_file();
 
 int is_exit_status_bad() {
   int good = (nemu_state.state == NEMU_END && nemu_state.halt_ret == 0) ||
@@ -44,7 +44,7 @@ void monitor_statistic() {
 }
 
 bool log_enable() {
-  return (g_nr_guest_instr >= LOG_START) && (g_nr_guest_instr <= LOG_END);
+  return (LOG_END == 0) || ((g_nr_guest_instr >= LOG_START) && (g_nr_guest_instr <= LOG_END));
 }
 
 void display_inv_msg(vaddr_t pc) {
@@ -118,6 +118,7 @@ void cpu_exec(uint64_t n) {
           nemu_state.halt_pc);
       // fall through
     case NEMU_QUIT:
+			end_of_log_file();
       monitor_statistic();
   }
 }

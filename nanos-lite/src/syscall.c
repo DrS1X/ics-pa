@@ -2,8 +2,10 @@
 #include <sys/time.h>
 #include "syscall.h"
 #include <fs.h>
+#include <proc.h>
 
 void do_syscall(Context *c) {
+	extern void naive_uload(PCB *pcb, const char *filename);
   uintptr_t a[4];
   a[0] = c->GPR1;
   a[1] = c->GPR2;
@@ -30,7 +32,8 @@ void do_syscall(Context *c) {
 			break;
 		}
 		case SYS_yield: yield(); break;	
-		case SYS_exit: halt(a[1]); break;	
+		case SYS_execve: naive_uload(NULL, (char *)a[1]); break;
+		case SYS_exit: naive_uload(NULL, "/bin/nterm");/*halt(a[1]);*/ break;	
     default: panic("Unhandled syscall ID = %d", a[0]);
   }
 }

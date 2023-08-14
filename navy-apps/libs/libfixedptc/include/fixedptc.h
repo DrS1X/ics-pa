@@ -132,7 +132,7 @@ static inline fixedpt fixedpt_muli(fixedpt A, int B) {
 
 /* Divides a fixedpt number with an integer, returns the result. */
 static inline fixedpt fixedpt_divi(fixedpt A, int B) {
-	return fixedpt_rconst(A / (B << FIXEDPT_FBITS));
+	return (A / (B << FIXEDPT_FBITS));
 }
 
 /* Multiplies two fixedpt numbers, returns the result. */
@@ -142,7 +142,7 @@ static inline fixedpt fixedpt_mul(fixedpt A, fixedpt B) {
 
 /* Divides two fixedpt numbers, returns the result. */
 static inline fixedpt fixedpt_div(fixedpt A, fixedpt B) {
-	return fixedpt_rconst(A / B);
+	return (A / B);
 }
 
 static inline fixedpt fixedpt_abs(fixedpt A) {
